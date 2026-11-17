@@ -1,23 +1,23 @@
 package com.oneservepoint.app;
 
 import android.app.Activity;
+import android.os.Bundle;
 import android.content.Intent;
 import android.net.Uri;
-import android.os.Bundle;
-import android.view.Window;
-import android.view.WindowManager;
-import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
-import android.webkit.WebResourceRequest;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.webkit.WebResourceRequest;
+import android.webkit.ValueCallback;
+import android.view.Window;
+import android.view.WindowManager;
 
 public class MainActivity extends Activity {
-    private static final int FILE_CHOOSER_REQUEST_CODE = 1001;
 
     private WebView webView;
-    private ValueCallback<Uri[]> filePathCallback;
+    private ValueCallback<Uri[]> fileUploadCallback;
+    private static final int FILE_CHOOSER_REQUEST_CODE = 100;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -25,7 +25,7 @@ public class MainActivity extends Activity {
 
         requestWindowFeature(Window.FEATURE_NO_TITLE);
         getWindow().setSoftInputMode(
-                WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
+            WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE
         );
 
         webView = new WebView(this);
@@ -41,48 +41,57 @@ public class MainActivity extends Activity {
         settings.setMediaPlaybackRequiresUserGesture(false);
 
         webView.setWebChromeClient(new WebChromeClient() {
+
             @Override
             public boolean onShowFileChooser(
-                    WebView view,
-                    ValueCallback<Uri[]> filePathCallback,
-                    FileChooserParams fileChooserParams
+                WebView webView,
+                ValueCallback<Uri[]> filePathCallback,
+                FileChooserParams fileChooserParams
             ) {
-                // Complete any previous file selection request.
-                if (MainActivity.this.filePathCallback != null) {
-                    MainActivity.this.filePathCallback.onReceiveValue(null);
+
+                if (fileUploadCallback != null) {
+                    fileUploadCallback.onReceiveValue(null);
                 }
 
-                MainActivity.this.filePathCallback = filePathCallback;
+                fileUploadCallback = filePathCallback;
 
                 try {
                     Intent intent = fileChooserParams.createIntent();
+
                     startActivityForResult(
-                            Intent.createChooser(intent, "Select a file"),
-                            FILE_CHOOSER_REQUEST_CODE
+                        intent,
+                        FILE_CHOOSER_REQUEST_CODE
                     );
-                    return true;
+
                 } catch (Exception e) {
-                    MainActivity.this.filePathCallback = null;
-                    filePathCallback.onReceiveValue(null);
+                    fileUploadCallback = null;
                     return false;
                 }
+
+                return true;
             }
         });
 
         webView.setWebViewClient(new WebViewClient() {
+
             @Override
             public boolean shouldOverrideUrlLoading(
-                    WebView view,
-                    WebResourceRequest request
+                WebView view,
+                WebResourceRequest request
             ) {
+
                 String url = request.getUrl().toString();
 
-                if (url.startsWith("https://") || url.startsWith("http://")) {
+                if (url.startsWith("https://") ||
+                    url.startsWith("http://")) {
+
                     view.getContext().startActivity(
-                            new Intent(Intent.ACTION_VIEW, request.getUrl())
+                        new Intent(Intent.ACTION_VIEW, request.getUrl())
                     );
+
                     return true;
                 }
+
                 return false;
             }
         });
@@ -91,23 +100,30 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+    protected void onActivityResult(
+        int requestCode,
+        int resultCode,
+        Intent data
+    ) {
+
         super.onActivityResult(requestCode, resultCode, data);
 
         if (requestCode == FILE_CHOOSER_REQUEST_CODE) {
-            if (filePathCallback != null) {
-                Uri[] results = WebChromeClient.FileChooserParams.parseResult(
-                        resultCode,
-                        data
-                );
-                filePathCallback.onReceiveValue(results);
-                filePathCallback = null;
+
+            if (fileUploadCallback != null) {
+
+                Uri[] results = WebChromeClient.FileChooserParams
+                    .parseResult(resultCode, data);
+
+                fileUploadCallback.onReceiveValue(results);
+                fileUploadCallback = null;
             }
         }
     }
 
     @Override
     public void onBackPressed() {
+
         if (webView != null && webView.canGoBack()) {
             webView.goBack();
         } else {
@@ -117,9 +133,10 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
-        if (filePathCallback != null) {
-            filePathCallback.onReceiveValue(null);
-            filePathCallback = null;
+
+        if (fileUploadCallback != null) {
+            fileUploadCallback.onReceiveValue(null);
+            fileUploadCallback = null;
         }
 
         if (webView != null) {
